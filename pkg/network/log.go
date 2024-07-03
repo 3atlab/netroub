@@ -198,7 +198,7 @@ func FlushLogFiles(logFiles []string) error {
 func TcpdumpLog(index int) error {
 	containerNameArray := strings.Split(model.Scenar.Event[0].Host, "-")
 	containerName := strings.Join(containerNameArray[:len(containerNameArray)-1], "-")
-	fmt.Println("Container Name: ", containerName) // Debug print
+	// fmt.Println("Container Name: ", containerName) // Debug print
 
 	// Build directory path
 	topoPath := model.FindTopoPath() + "/r" + strconv.Itoa(index+1)
