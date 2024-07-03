@@ -1,7 +1,8 @@
 {
     "scenarioName" : "delay_all_devices_300",
-    "logPath" : "/home/colin/Documents/colin/log",
-    "topo":"/home/colin/Documents/colin/topo/bgp_features/topo.yaml",
+    "logPath" : "/home/samy/samy_internship/emulation/log",
+    "topo":"/home/samy/samy_internship/emulation/bgp_features/topo.yaml",
+    "data": "/home/samy/samy_internship/emulation/bgp_features/data.json",
 
     "event":[
         {

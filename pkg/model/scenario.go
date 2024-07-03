@@ -34,6 +34,7 @@ type Event struct {
 type Scenario struct {
 	ScenarioName string  `json:"scenarioName" yaml:"scenarioName"`
 	Topo         string  `json:"topo" yaml:"topo"`
+	Data         string  `json:"data" yaml:"data"`
 	LogPath      string  `json:"logPath" yaml:"logPath"`
 	Event        []Event `json:"event" yaml:"event"`
 }

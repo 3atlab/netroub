@@ -57,7 +57,7 @@ func ReadYaml() error {
 }
 
 func ReadJsonData() error {
-	file, err := os.Open(FindTopoPath() + "data.json")
+	file, err := os.Open(Scenar.Data)
 	if err != nil {
 		fmt.Println("Fail to open the file")
 		return err

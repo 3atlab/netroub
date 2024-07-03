@@ -39,6 +39,7 @@ Netroub reproduces network failure behaviors described in a scenario file on Doc
 | scenarioName | string | Name of the scenario (useful for outputs)
 | logPath      | string | Path to the output repository
 | topo         | string | Path to the topology file required by Containerlab
+| data         | string | Path to the data file with device parameter
 | events       | array  | Array of event to be applied during scenario execution
 
 ## Citation
