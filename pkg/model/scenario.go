@@ -13,6 +13,9 @@ type CommandOptions struct {
 	PacketOverhead 	int 	`json:"packetOverhead" yaml:"packetOverhead"`
 	CellSize 		int 	`json:"cellSize" yaml:"cellSize"`
 	CellOverhead 	int 	`json:"cellOverhead" yaml:"cellOverhead"`
+	StressImage 	string 	`json:"stressImage" yaml:"stressImage"`
+	PullImage 		bool 	`json:"pullImage" yaml:"pullImage"`
+	Stressors 		string 	`json:"stressors" yaml:"stressors"`
 }
 
 type ConfigFileChanges struct {

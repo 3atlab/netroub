@@ -1,0 +1,21 @@
+{
+    "scenarioName": "stress_r1",
+    "logPath": "./path_to_log_directory",
+    "topo": "./path_to_topo.yaml",
+    "data": "./path_to_data.json",
+    "event": [
+        {
+            "beginTime": 1,
+            "type": "pumba",
+            "host": "clab-bgp_features-r1",
+            "pumbaCommand": {
+                "name": "stress",
+                "options": {
+                    "duration": "300s",
+                    "stressImage": "alexeiled/stress-ng:latest-ubuntu",
+                    "stressors": "--cpu 2"
+                }
+            }
+        }
+    ]
+}
