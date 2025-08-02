@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,17 +16,31 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
+
 func ExecNetemCommand(index int) error {
 	dur, err := time.ParseDuration(model.Scenar.Event[index].PumbaCommand.Options.Duration)
 	if err != nil {
 		return err
 	}
 
+	hosts := model.Scenar.Event[index].GetHosts()
+	if len(hosts) == 0 {
+		return fmt.Errorf("no hosts specified for Pumba command")
+	}
+	containerNames := make([]string, 0, len(hosts))
+	for _, host := range hosts {
+		err = model.ValidateHostNames([]string{host})
+		if err != nil {
+			return err
+		}
+		containerNames = append(containerNames, model.ClabHostName(host))
+	}
+
 	globalParams := chaos.GlobalParams{
 		Random:     false,
 		Labels:     nil,
 		Pattern:    "",
-		Names:      []string{model.Scenar.Event[index].Host},
+		Names:      containerNames,
 		Interval:   0,
 		DryRun:     false,
 		SkipErrors: false,
@@ -142,7 +157,6 @@ func parseStressCommands(index int, globalParams chaos.GlobalParams) (chaos.Comm
 	}
 }
 
-
 func ExecPumbaCommand(index int) error {
 	switch model.Scenar.Event[index].PumbaCommand.Name {
 	case "delay", "corrupt", "duplicate", "loss", "rate", "stop", "pause":
@@ -153,4 +167,3 @@ func ExecPumbaCommand(index int) error {
 		return errors.New("unknown Pumba command")
 	}
 }
-

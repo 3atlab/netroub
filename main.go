@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -43,11 +44,15 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Netroub"
 	app.Usage = "Netroub is a synthetic data generator from network trouble scenarios"
-	app.Version = "0.0.1"
+	app.Version = "0.0.2"
 	app.Authors = []cli.Author{
 		{
 			Name:  "Colin Regal-Mezin",
 			Email: "colin.regalmezin@gmail.com",
+		},
+		{
+			Name:  "Satoru Kobayashi",
+			Email: "sat@okayama-u.ac.jp",
 		},
 	}
 	app.EnableBashCompletion = true
@@ -81,7 +86,8 @@ func runScenario(c *cli.Context) error {
 		fmt.Println("Error while creating control log file")
 		return err
 	}
-	logrus.SetOutput(controlLogFile)
+	// logrus.SetOutput(controlLogFile)
+	logrus.SetOutput(io.MultiWriter(os.Stdout, controlLogFile))
 
 	//Read the scenario file and sort it by time in an array
 	if c.Bool("yaml") {
@@ -101,6 +107,13 @@ func runScenario(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	err = model.ValidateHostNames(model.Scenar.Hosts)
+	if err != nil {
+		return err
+	}
+
+	//Set dummy event to control the whole duration of the scenario
+	model.Scenar.Event = append(model.Scenar.Event, model.Event{BeginTime: "0s", Type: model.EventTypeDummy})
 
 	//Stock the size of all the log file present in the directory of the topo file
 	path := model.FindTopoPath()
@@ -109,6 +122,7 @@ func runScenario(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	//Create the DockerClient which is mandatory for pumba command
 	err = network.CreateDockerClient(c)
 	if err != nil {
@@ -120,13 +134,14 @@ func runScenario(c *cli.Context) error {
 		return err
 	}
 
-	nbFile, err := countSubDir()
-	if err != nil {
-		return err
-	}
+	// nbFile, err := countSubDir()
+	// if err != nil {
+	// 	return err
+	// }
 
-	for i := 0; i < nbFile; i++ {
-		err = network.TcpdumpLog(i)
+	//Setup tcpdump logging
+	for _, node := range model.Scenar.Hosts {
+		err = network.TcpdumpLog(node)
 		if err != nil {
 			return err
 		}
@@ -134,15 +149,40 @@ func runScenario(c *cli.Context) error {
 
 	//Create a channel to verify routine states
 	done := make(chan bool)
+
+	// Load and parse beginTime for each event
+	beginTimes := make([]time.Duration, 0, len(model.Scenar.Event))
+	for _, event := range model.Scenar.Event {
+		var dur time.Duration
+		if event.BeginTime == "" {
+			dur = time.Duration(0)
+		} else {
+			dur, err = time.ParseDuration(event.BeginTime)
+			if err != nil {
+				return err
+			}
+		}
+		beginTimes = append(beginTimes, dur)
+	}
+
+	logrus.Debugf("Starting scenario %s\n", model.Scenar.ScenarioName)
+
 	//Run for all the events in the scenario file
 	for i := 0; i < len(model.Scenar.Event); i++ {
+		logrus.Debugf("Adding new event %d %+v\n", i, model.Scenar.Event[i]) // DEBUG
 		go func(index int) {
-			event := model.Scenar.Event[index]
-			timeToWait := time.Duration(event.BeginTime) * time.Second
+			dur := beginTimes[index]
+			if dur.Seconds() > 0 {
+				time.Sleep(dur)
+			}
+			logrus.Debugf("Starting event %d\n", index)
 
-			time.Sleep(timeToWait)
+			err := events.ExecuteEvent(index)
+			if err != nil {
+				logrus.Errorf("Error executing event %d: %v\n", index, err)
+			}
 
-			events.ExecuteEvent(index)
+			logrus.Debugf("Completed event %d\n", index)
 
 			done <- true
 		}(i)
@@ -152,6 +192,9 @@ func runScenario(c *cli.Context) error {
 	for i := 0; i < len(model.Scenar.Event); i++ {
 		<-done
 	}
+
+	logrus.Debugf("Completed scenario %s\n", model.Scenar.ScenarioName)
+
 	return nil
 }
 
@@ -161,7 +204,8 @@ func before(c *cli.Context) error {
 	c.Args() //Permit to remove an unsed paramater warning
 	/*Useless*/
 	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
+	logrus.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05.000", FullTimestamp: true})
+	logrus.SetOutput(os.Stdout)
 
 	logrus.AddHook(NewConsoleHook())
 	return nil
@@ -180,12 +224,19 @@ func after(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	logrus.Debugf("Log files: %v\n", logFiles)
 	//Move tcpdump log files
-	network.GetTcpdumpLogs(len(logFiles))
+	err = network.GetTcpdumpLogs()
+	if err != nil {
+		return err
+	}
 	//Destroy the emulated network
-	network.DestroyNetwork()
+	err = network.DestroyNetwork()
+	if err != nil {
+		return err
+	}
 
-	err = network.MoveLogFiles(logFiles)
+	err = network.MoveLogFiles(logFiles, path)
 	if err != nil {
 		return err
 	}
@@ -197,24 +248,24 @@ func after(c *cli.Context) error {
 	return nil
 }
 
-func countSubDir() (int, error) {
-	count := 0
-
-	file, err := os.Open(model.FindTopoPath())
-	if err != nil {
-		return count, err
-	}
-	defer file.Close()
-
-	dir, err := file.ReadDir(-1)
-	if err != nil {
-		fmt.Println("Error while reading topo dir")
-		return count, err
-	}
-	for _, subDir := range dir {
-		if subDir.IsDir() {
-			count++
-		}
-	}
-	return count, nil
-}
+// func countSubDir() (int, error) {
+// 	count := 0
+//
+// 	file, err := os.Open(model.FindTopoPath())
+// 	if err != nil {
+// 		return count, err
+// 	}
+// 	defer file.Close()
+//
+// 	dir, err := file.ReadDir(-1)
+// 	if err != nil {
+// 		fmt.Println("Error while reading topo dir")
+// 		return count, err
+// 	}
+// 	for _, subDir := range dir {
+// 		if subDir.IsDir() {
+// 			count++
+// 		}
+// 	}
+// 	return count, nil
+// }

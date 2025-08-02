@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func ConfigTemplate() string {
@@ -37,17 +36,22 @@ func SudoCheck() {
 }
 
 func FindTopoPath() string {
-	var path string
-	//Find the directory to search log file
 	topoPath := Scenar.Topo
-	nbDash := strings.Count(topoPath, "/")
-	splittedPath := strings.Split(topoPath, "/")
-	for i := 0; i < nbDash; i++ {
-		path += splittedPath[i] + "/"
-	}
-
-	return path
+	return filepath.Dir(topoPath) + "/"
 }
+
+// func FindTopoPath() string {
+// 	var path string
+// 	//Find the directory to search log file
+// 	topoPath := Scenar.Topo
+// 	nbDash := strings.Count(topoPath, "/")
+// 	splittedPath := strings.Split(topoPath, "/")
+// 	for i := 0; i < nbDash; i++ {
+// 		path += splittedPath[i] + "/"
+// 	}
+//
+// 	return path
+// }
 
 func StockInitialSize(initialSizes map[string]int64, root string) (map[string]int64, error) {
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {

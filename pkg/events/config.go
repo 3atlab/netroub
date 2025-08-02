@@ -30,8 +30,8 @@ func ExecConfigCommand(index int) error {
 
 func ExecConfigFileChanges(index int) error {
 
-	//Get the device name
-	device := strings.SplitAfter(model.Scenar.Event[index].Host, "-")[len(strings.SplitAfter(model.Scenar.Event[index].Host, "-"))-1]
+	// //Get the device name
+	// device := strings.SplitAfter(model.Scenar.Event[index].Host, "-")[len(strings.SplitAfter(model.Scenar.Event[index].Host, "-"))-1]
 
 	//Copy frr-reload.py in the host container
 	/*cmd := exec.Command("sudo", "docker", "cp", "frr-reload.py", model.Scenar.Event[index].Host+":/")
@@ -40,10 +40,11 @@ func ExecConfigFileChanges(index int) error {
 		fmt.Println("Error while copying config file in the container")
 		return err
 	}*/
+	host := model.Scenar.Event[index].Host
 
 	for _, modif := range model.Scenar.Event[index].ConfigFileChanges {
 		//Get the path of the topology file
-		file, err := os.Open(model.FindTopoPath() + device + "/" + modif.File)
+		file, err := os.Open(model.FindTopoPath() + host + "/" + modif.File)
 		if err != nil {
 			fmt.Println("Error while opening config file")
 			return err
@@ -67,7 +68,7 @@ func ExecConfigFileChanges(index int) error {
 		writeString := strings.Join(configFile, "\n")
 
 		//Write the new config in the configuration file
-		err = os.WriteFile(model.FindTopoPath()+device+"/"+modif.File, []byte(writeString), 0666)
+		err = os.WriteFile(model.FindTopoPath()+host+"/"+modif.File, []byte(writeString), 0666)
 		if err != nil {
 			fmt.Println("Error while writig changes in config file")
 			return err

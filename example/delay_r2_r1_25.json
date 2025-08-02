@@ -3,107 +3,111 @@
     "logPath" : "./path_to_log_directory",
     "topo":"./path_to_topo.yaml",
     "data": "./path_to_data.json",
+    "duration": "60s",
+    "hosts": ["r1", "r2", "r3", "r4", "r5"],
+    "logfiles": ["frr.log"],
+
     "event":[
         {
-            "beginTime" : 2,
+            "beginTime" : "2s",
             "type": "pumba",
-            "host": "clab-bgp_features-r2",    
+            "host": "r2",    
             "pumbaCommand": {
                 "name" : "delay",
                 "options":{
-                    "time" : 300, 
-                    "duration": "300s",
+                    "time" : 3, 
+                    "duration": "30s",
                     "interface": "net0"
                 }
             }
         },
         {
-            "beginTime" : 2,
+            "beginTime" : "2s",
             "type": "pumba",
-            "host": "clab-bgp_features-r2",    
+            "host": "r2",    
             "pumbaCommand": {
                 "name" : "delay",
                 "options":{
-                    "time" : 300, 
-                    "duration": "300s",
+                    "time" : 3, 
+                    "duration": "30s",
                     "interface": "net1"
                 }
             }
         },
         {
-            "beginTime" : 2,
+            "beginTime" : "2s",
             "type": "pumba",
-            "host": "clab-bgp_features-r2",    
+            "host": "r2",    
             "pumbaCommand": {
                 "name" : "delay",
                 "options":{
-                    "time" : 300, 
-                    "duration": "300s",
+                    "time" : 3, 
+                    "duration": "30s",
                     "interface": "net2"
                 }
             }
         },
         {
-            "beginTime" : 2,
+            "beginTime" : "2s",
             "type": "pumba",
-            "host": "clab-bgp_features-r2",    
+            "host": "r2",    
             "pumbaCommand": {
                 "name" : "delay",
                 "options":{
-                    "time" : 300, 
-                    "duration": "300s",
+                    "time" : 3, 
+                    "duration": "30s",
                     "interface": "net3"
                 }
             }
         },
         {
-            "beginTime" : 2,
+            "beginTime" : "2s",
             "type": "pumba",
-            "host": "clab-bgp_features-r1",    
+            "host": "r1",    
             "pumbaCommand": {
                 "name" : "delay",
                 "options":{
-                    "time" : 300, 
-                    "duration": "300s",
+                    "time" : 3, 
+                    "duration": "30s",
                     "interface": "net0"
                 }
             }
         },
         {
-            "beginTime" : 2,
+            "beginTime" : "2s",
             "type": "pumba",
-            "host": "clab-bgp_features-r1",    
+            "host": "r1",    
             "pumbaCommand": {
                 "name" : "delay",
                 "options":{
-                    "time" : 300, 
-                    "duration": "300s",
+                    "time" : 3, 
+                    "duration": "30s",
                     "interface": "net1"
                 }
             }
         },
         {
-            "beginTime" : 2,
+            "beginTime" : "2s",
             "type": "pumba",
-            "host": "clab-bgp_features-r1",    
+            "host": "r1",    
             "pumbaCommand": {
                 "name" : "delay",
                 "options":{
-                    "time" : 300, 
-                    "duration": "300s",
+                    "time" : 3, 
+                    "duration": "30s",
                     "interface": "net2"
                 }
             }
         },
         {
-            "beginTime" : 2,
+            "beginTime" : "2s",
             "type": "pumba",
-            "host": "clab-bgp_features-r1",    
+            "host": "r1",    
             "pumbaCommand": {
                 "name" : "delay",
                 "options":{
-                    "time" : 300, 
-                    "duration": "300s",
+                    "time" : 3, 
+                    "duration": "30s",
                     "interface": "net3"
                 }
             }

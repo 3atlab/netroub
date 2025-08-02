@@ -7,12 +7,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/3atlab/netroub/pkg/model"
+	"github.com/sirupsen/logrus"
 )
+
+const ControlLogFileName = "control.log"
 
 func SearchFiles(initalSizes map[string]int64, root string) ([]string, error) {
 	var files []string
@@ -24,7 +26,7 @@ func SearchFiles(initalSizes map[string]int64, root string) ([]string, error) {
 
 		initalSize, exist := initalSizes[path]
 
-		if exist && info.Size() != initalSize && !strings.Contains(path, "control.log") {
+		if exist && info.Size() != initalSize && !strings.Contains(path, ControlLogFileName) {
 			files = append(files, path)
 		}
 
@@ -39,11 +41,25 @@ func SearchFiles(initalSizes map[string]int64, root string) ([]string, error) {
 	return files, nil
 }
 
-func MoveLogFiles(logFiles []string) error {
+func trialDirectoryName(t time.Time) string {
+	// Datetime of ISO Format
+	return t.Format("2006-01-02T15:04:05")
+}
+
+func MoveLogFiles(logFiles []string, topoPath string) error {
+	//Create log directory if it does not exist
+	if _, err := os.Stat(model.Scenar.LogPath); os.IsNotExist(err) {
+		err = os.Mkdir(model.Scenar.LogPath, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
 	//Retrieve the time for the name
 	t := time.Now()
 	//Generate a name for the directory
-	dirName := strconv.Itoa(int(t.Month())) + "_" + strconv.Itoa(t.Day()) + "_" + strconv.Itoa(t.Hour()) + ":" + strconv.Itoa(t.Minute()) + ":" + strconv.Itoa(t.Second()) + "_" + model.Scenar.ScenarioName
+	// dirName := strconv.Itoa(int(t.Month())) + "_" + strconv.Itoa(t.Day()) + "_" + strconv.Itoa(t.Hour()) + ":" + strconv.Itoa(t.Minute()) + ":" + strconv.Itoa(t.Second()) + "_" + model.Scenar.ScenarioName
+	dirName := trialDirectoryName(t)
 
 	if _, err := os.Stat(model.Scenar.LogPath + "/" + model.Scenar.ScenarioName); os.IsNotExist(err) {
 		err = os.Mkdir(model.Scenar.LogPath+"/"+model.Scenar.ScenarioName, os.ModePerm)
@@ -61,20 +77,29 @@ func MoveLogFiles(logFiles []string) error {
 	}
 
 	//Fill the directory with the different logs generated
-	for path := range logFiles {
-		err := os.Mkdir(model.Scenar.LogPath+"/"+model.Scenar.ScenarioName+"/"+dirName+"/r"+strconv.Itoa(path+1), os.ModePerm)
+	for _, path := range logFiles {
+
+		// Get path to place the collected log file
+		relativePath, err := filepath.Rel(topoPath, path)
+		if err != nil {
+			return err
+		}
+		newPath := filepath.Join(model.Scenar.LogPath, model.Scenar.ScenarioName, dirName, relativePath)
+
+		err = os.MkdirAll(filepath.Dir(newPath), os.ModePerm)
 		if err != nil {
 			fmt.Println("Error while creating device directory")
 			return err
 		}
-		src, err := os.Open(logFiles[path])
+
+		src, err := os.Open(path)
 		if err != nil {
 			fmt.Println("Error while opening log file")
 			return err
 		}
 		defer src.Close()
-		destFile := filepath.Join(model.Scenar.LogPath+"/"+model.Scenar.ScenarioName+"/"+dirName+"/r"+strconv.Itoa(path+1), filepath.Base(logFiles[path]))
-		dst, err := os.Create(destFile)
+		// destFile := filepath.Join(model.Scenar.LogPath+"/"+model.Scenar.ScenarioName+"/"+dirName+"/r"+strconv.Itoa(path+1), filepath.Base(logFiles[path]))
+		dst, err := os.Create(newPath)
 		if err != nil {
 			fmt.Println("Error while creating new file")
 			return err
@@ -85,6 +110,8 @@ func MoveLogFiles(logFiles []string) error {
 			fmt.Println("Error while copying log into the new file")
 			return err
 		}
+
+		logrus.Debugf("move log file %s to %s", path, newPath)
 	}
 
 	err = MoveControlLogs(dirName)
@@ -92,9 +119,10 @@ func MoveLogFiles(logFiles []string) error {
 		return err
 	}
 
-	for i := 0; i < len(logFiles); i++ {
+	for _, host := range model.Scenar.Hosts {
 
-		err = MoveTcpdumpLogs(dirName, "r"+strconv.Itoa(i+1), i)
+		i := model.GetDeviceIndex(host)
+		err = MoveTcpdumpLogs(dirName, host, i)
 		if err != nil {
 			return err
 		}
@@ -106,13 +134,13 @@ func MoveLogFiles(logFiles []string) error {
 
 func MoveControlLogs(dirName string) error {
 	//Move the control log file in the created directory
-	control, err := os.Open("control.log")
+	control, err := os.Open(ControlLogFileName)
 	if err != nil {
 		fmt.Println("Error while opening control log file")
 		return err
 	}
 	defer control.Close()
-	destFile := filepath.Join(model.Scenar.LogPath+"/"+model.Scenar.ScenarioName+"/"+dirName, filepath.Base("control.log"))
+	destFile := filepath.Join(model.Scenar.LogPath+"/"+model.Scenar.ScenarioName+"/"+dirName, filepath.Base(ControlLogFileName))
 	dst, err := os.Create(destFile)
 	if err != nil {
 		fmt.Println("Error while creating new control log file")
@@ -123,7 +151,10 @@ func MoveControlLogs(dirName string) error {
 		fmt.Println("Error while copying control log into the new file")
 		return err
 	}
-	err = os.Remove("control.log")
+
+	logrus.Debugf("move control log file %s to %s", ControlLogFileName, destFile)
+
+	err = os.Remove(ControlLogFileName)
 	if err != nil {
 		return err
 	}
@@ -166,13 +197,14 @@ func MoveTcpdumpLogs(dirName string, device string, index int) error {
 
 }
 
-func GetTcpdumpLogs(nbFile int) error {
+func GetTcpdumpLogs() error {
 
-	containerNameArray := strings.Split(model.Scenar.Event[0].Host, "-")
-	containerName := strings.Join(containerNameArray[:len(containerNameArray)-1], "-")
+	// containerNameArray := strings.Split(model.Scenar.Event[0].Host, "-")
+	// containerName := strings.Join(containerNameArray[:len(containerNameArray)-1], "-")
 
-	for i := 0; i < nbFile; i++ {
-		cmd := exec.Command("sudo", "docker", "cp", containerName+"-r"+strconv.Itoa(i+1)+":/tcpdump", model.FindTopoPath()+"r"+strconv.Itoa(i+1)+"/")
+	for _, node := range model.Scenar.Hosts {
+		containerName := model.ClabHostName(node)
+		cmd := exec.Command("sudo", "docker", "cp", containerName+":/tcpdump", model.FindTopoPath()+node+"/")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Println("Error while moving tcpdump directory")
@@ -195,13 +227,17 @@ func FlushLogFiles(logFiles []string) error {
 	return nil
 }
 
-func TcpdumpLog(index int) error {
-	containerNameArray := strings.Split(model.Scenar.Event[0].Host, "-")
-	containerName := strings.Join(containerNameArray[:len(containerNameArray)-1], "-")
+func TcpdumpLog(node string) error {
+	containerName := model.ClabHostName(node)
+	// containerNameArray := strings.Split(model.Scenar.Event[0].Host, "-")
+	// containerName := strings.Join(containerNameArray[:len(containerNameArray)-1], "-")
 	// fmt.Println("Container Name: ", containerName) // Debug print
+	// if containerName == "" {
+	// 	return fmt.Errorf("container name is empty, failed to setup tcpdump logs")
+	// }
 
 	// Build directory path
-	topoPath := model.FindTopoPath() + "/r" + strconv.Itoa(index+1)
+	topoPath := model.FindTopoPath() + "/" + node
 	scriptPath := topoPath + "/tcpdump.sh"
 
 	// Create directory if necessary
@@ -227,16 +263,16 @@ func TcpdumpLog(index int) error {
 	}
 
 	// Create the tcpdump directory in the container
-	cmd := exec.Command("sudo", "docker", "exec", "-d", containerName+"-r"+strconv.Itoa(index+1), "mkdir", "tcpdump")
+	cmd := exec.Command("sudo", "docker", "exec", "-d", containerName, "mkdir", "tcpdump")
 	var output []byte
 	output, err = cmd.CombinedOutput()
-	if err != nil{
+	if err != nil {
 		fmt.Println("Error while creating tcpdump directory:", err)
+		fmt.Println(cmd.String())
 		log.Println(string(output))
 		return err
 	}
-
-	
+	logrus.Debugf("execute %s\n", cmd.String())
 
 	// Write the script in tcpdump.sh
 	_, err = file.WriteString("#!/bin/sh \n")
@@ -246,6 +282,7 @@ func TcpdumpLog(index int) error {
 	}
 
 	// Add tcpdump commands for each interface
+	index := model.GetDeviceIndex(node)
 	for _, inter := range model.Devices.Nodes[index].Interfaces {
 		_, err = file.WriteString("tcpdump -i " + inter.Name + " -n -v > tcpdump/tcpdump" + "_" + inter.Name + ".log & \n")
 		if err != nil {
@@ -255,22 +292,24 @@ func TcpdumpLog(index int) error {
 	}
 
 	// Copy the tcpdump.sh script into the container
-	cmd = exec.Command("sudo", "docker", "cp", scriptPath, containerName+"-r"+strconv.Itoa(index+1)+":/")
+	cmd = exec.Command("sudo", "docker", "cp", scriptPath, containerName+":/")
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("Error while copying tcpdump script in the host container:", err)
 		log.Println(string(output))
 		return err
 	}
+	logrus.Debugf("execute %s\n", cmd.String())
 
 	// Run the tcpdump.sh script in the container
-	cmd = exec.Command("sudo", "docker", "exec", "-d", containerName+"-r"+strconv.Itoa(index+1), "./tcpdump.sh")
+	cmd = exec.Command("sudo", "docker", "exec", "-d", containerName, "./tcpdump.sh")
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("Error while starting tcpdump:", err)
 		log.Println(string(output))
 		return err
 	}
+	logrus.Debugf("execute %s\n", cmd.String())
 
 	return nil
 }

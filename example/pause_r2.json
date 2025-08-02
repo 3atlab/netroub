@@ -3,16 +3,19 @@
     "logPath" : "./path_to_log_directory",
     "topo":"./path_to_topo.yaml",
     "data": "./path_to_data.json",
+    "duration": "60s",
+    "hosts": ["r1", "r2", "r3", "r4", "r5"],
+    "logfiles": ["frr.log"],
 
     "event":[
         {
-            "beginTime" : 1,
+            "beginTime" : "1s",
             "type": "pumba",
-            "host": "clab-bgp_features-r2",    
+            "host": "r2",    
             "pumbaCommand": {
                 "name" : "pause",
                 "options":{
-                    "duration": "300s"
+                    "duration": "30s"
                 }
             }
         }

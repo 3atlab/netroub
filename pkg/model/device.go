@@ -1,5 +1,7 @@
 package model
 
+import "fmt"
+
 type Connections struct {
 	SrcNode      string `json:"src_node"`
 	SrcInterface string `json:"src_interface"`
@@ -35,3 +37,31 @@ type Data struct {
 }
 
 var Devices Data
+
+func ValidateHostNames(hosts []string) error {
+	for _, host := range hosts {
+		ok := false
+		for _, device := range Devices.Nodes {
+			if host == device.Name {
+				ok = true
+			}
+		}
+		if !ok {
+			return fmt.Errorf("host %s not found in the topology", host)
+		}
+	}
+	return nil
+}
+
+func ClabHostName(host string) string {
+	return "clab-" + Devices.Name + "-" + host
+}
+
+func GetDeviceIndex(device string) int {
+	for i, node := range Devices.Nodes {
+		if device == node.Name {
+			return i
+		}
+	}
+	return -1
+}
