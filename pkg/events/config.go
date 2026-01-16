@@ -3,7 +3,6 @@ package events
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -88,56 +87,29 @@ func ExecConfigFileChanges(index int) error {
 }
 
 func ExecVtyshChanges(index int) error {
-	//Get the working directory
-	wd, err := os.Getwd()
-	if err != nil {
-		fmt.Println("Error while getting working directory")
-		return err
-	}
-	//Create the configuration changes file
-	tempFile, err := os.CreateTemp(wd, "changes")
-	if err != nil {
-		fmt.Println("Error while creating temporary config file")
-		return err
-	}
-	defer func() {
-		tempFile.Close()
-		os.Remove(tempFile.Name())
-	}()
+	host := model.Scenar.Event[index].Host
+	containerName := model.ClabHostName(host)
 
-	//Upgrde the permissions of the the file
-	err = tempFile.Chmod(0777)
-	if err != nil {
-		fmt.Println("Error while changing permissions")
-		return err
-	}
-
-	//Fill a file with the configuration changes
+	// Build vtysh command with multiple -c options
+	// Example: vtysh -c 'conf t' -c 'interface net0' -c 'ip ospf cost 100'
+	args := []string{"docker", "exec", containerName, "vtysh"}
 	for _, vtyCommand := range model.Scenar.Event[index].VtyshChanges {
-		tempFile.WriteString(vtyCommand + "\n")
+		args = append(args, "-c", vtyCommand)
 		logrus.WithFields(logrus.Fields{
 			"command":   vtyCommand,
-			"container": model.Scenar.Event[index].Host,
-		}).Debug("New command written in the config file:")
+			"container": host,
+		}).Debug("Adding vtysh command:")
 	}
 
-	//Copy the config file in the container
-	cmd := exec.Command("sudo", "docker", "cp", tempFile.Name(), model.Scenar.Event[index].Host+":/")
-	_, err = cmd.Output()
-	if err != nil {
-		fmt.Println("Error while copying config file in the container")
-		return err
-	}
+	cmd := exec.Command("sudo", args...)
+	logrus.Debugf("Event %d: Execute %s", index, cmd.String())
 
-	//Execute all the vtysh commands in the container
-	fileName := strings.SplitAfter(tempFile.Name(), "/")
-	cmd = exec.Command("sudo", "docker", "exec", model.Scenar.Event[index].Host, "vtysh", "-f", fileName[len(fileName)-1])
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println("Error while running vtysh command")
-		log.Println(string(output))
-		return err
+		return fmt.Errorf("failed to run vtysh command on %s: %w, command: %s, output: %s",
+			containerName, err, cmd.String(), strings.TrimSpace(string(output)))
 	}
+
 	logrus.Info("configuration changes applied")
 	return nil
 }

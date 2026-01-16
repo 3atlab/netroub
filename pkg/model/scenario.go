@@ -1,9 +1,16 @@
 package model
 
+import (
+	"path/filepath"
+	"time"
+)
+
 const EventTypeDummy = "dummy"
 const EventTypePumba = "pumba"
 const EventTypeShell = "shell"
 const EventTypeConfig = "config"
+const EventTypeCopy = "copy"
+const EventTypeCollect = "collect"
 
 type CommandOptions struct {
 	Duration       string  `json:"duration" yaml:"duration"`
@@ -29,6 +36,14 @@ type ConfigFileChanges struct {
 	Command string `json:"command" yaml:"command"`
 }
 
+// FileCopy represents a file copy operation with optional permission settings
+type FileCopy struct {
+	Src   string `json:"src" yaml:"src"`
+	Dst   string `json:"dst" yaml:"dst"`
+	Owner string `json:"owner" yaml:"owner"` // e.g., "frr:frr", "root:root"
+	Mode  string `json:"mode" yaml:"mode"`   // e.g., "644", "755"
+}
+
 type PumbaCommand struct {
 	Name    string         `json:"name" yaml:"name"`
 	Options CommandOptions `json:"options" yaml:"options"`
@@ -44,6 +59,9 @@ type Event struct {
 	ShellCommands     []string            `json:"shellCommands" yaml:"shellCommands"`
 	VtyshChanges      []string            `json:"vtyshChanges" yaml:"vtyshChanges"`
 	ConfigFileChanges []ConfigFileChanges `json:"configFileChanges" yaml:"configFileChanges"`
+	ToContainer       []FileCopy          `json:"toContainer" yaml:"toContainer"`
+	FromContainer     []FileCopy          `json:"fromContainer" yaml:"fromContainer"`
+	Files             []string            `json:"files,omitempty" yaml:"files,omitempty"` // for collect event
 }
 
 func (e Event) GetHosts() (hosts []string) {
@@ -74,3 +92,22 @@ var Scenar Scenario
 func (s Scenario) Len() int           { return len(s.Event) }
 func (s Scenario) Less(i, j int) bool { return s.Event[i].BeginTime < s.Event[j].BeginTime }
 func (s Scenario) Swap(i, j int)      { s.Event[i], s.Event[j] = s.Event[j], s.Event[i] }
+
+// TrialLogDirectory returns the log directory path for a trial.
+// The directory name is based on the start time in ISO format.
+func (s *Scenario) TrialLogDirectory(startTime time.Time) string {
+	dirName := startTime.Format("2006-01-02T15:04:05")
+	return filepath.Join(s.LogPath, s.ScenarioName, dirName)
+}
+
+// TrialLogDirectoryWithLabName returns the log directory path for a trial with a custom lab name.
+// This is used for parallel execution where each trial has a unique lab name.
+func (s *Scenario) TrialLogDirectoryWithLabName(startTime time.Time, labName string) string {
+	dirName := startTime.Format("2006-01-02T15:04:05")
+	return filepath.Join(s.LogPath, labName, dirName)
+}
+
+// ControlLogPath returns the path to the control.log file for a trial.
+func (s *Scenario) ControlLogPath(startTime time.Time) string {
+	return filepath.Join(s.TrialLogDirectory(startTime), "control.log")
+}

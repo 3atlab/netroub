@@ -1,0 +1,8 @@
+{
+    "name": "test-topo",
+    "nodes": [
+        {"name": "r1", "params": {"as": "65001", "name": "r1"}, "interfaces": []},
+        {"name": "r2", "params": {"as": "65002", "name": "r2"}, "interfaces": []}
+    ],
+    "connections": []
+}

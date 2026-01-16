@@ -1,0 +1,48 @@
+{
+    "scenarioName": "delay_test_50ms",
+    "logPath": "./test_logs",
+    "topo": "./tests/topology/minimal_delay_test.yaml",
+    "data": "./tests/data/minimal_data.json",
+    "duration": "30s",
+    "hosts": ["r1", "r2"],
+    "event": [
+        {
+            "beginTime": "3s",
+            "type": "shell",
+            "host": "r1",
+            "shellCommands": [
+                "ping -c 10 -i 0.2 192.168.1.2 | grep 'time=' | sed 's/.*time=\\([0-9.]*\\).*/\\1/' > /tmp/baseline_rtt.txt"
+            ]
+        },
+        {
+            "beginTime": "8s",
+            "type": "pumba",
+            "host": "r1",
+            "pumbaCommand": {
+                "name": "delay",
+                "options": {
+                    "time": 50,
+                    "duration": "15s",
+                    "interface": "net0"
+                }
+            }
+        },
+        {
+            "beginTime": "12s",
+            "type": "shell",
+            "host": "r1",
+            "shellCommands": [
+                "ping -c 10 -i 0.2 192.168.1.2 | grep 'time=' | sed 's/.*time=\\([0-9.]*\\).*/\\1/' > /tmp/delayed_rtt.txt"
+            ]
+        },
+        {
+            "beginTime": "25s",
+            "type": "copy",
+            "host": "r1",
+            "fromContainer": [
+                {"src": "/tmp/baseline_rtt.txt", "dst": "./test_logs/"},
+                {"src": "/tmp/delayed_rtt.txt", "dst": "./test_logs/"}
+            ]
+        }
+    ]
+}

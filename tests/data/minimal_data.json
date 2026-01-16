@@ -1,0 +1,27 @@
+{
+  "name": "delay-test",
+  "nodes": [
+    {
+      "name": "r1",
+      "params": {},
+      "interfaces": [
+        {"name": "net0", "params": {"name": "net0", "priority": ""}}
+      ]
+    },
+    {
+      "name": "r2",
+      "params": {},
+      "interfaces": [
+        {"name": "net0", "params": {"name": "net0", "priority": ""}}
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "src_node": "r1",
+      "src_interface": "net0",
+      "dst_node": "r2",
+      "dst_interface": "net0"
+    }
+  ]
+}

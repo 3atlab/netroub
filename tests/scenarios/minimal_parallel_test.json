@@ -1,0 +1,15 @@
+{
+    "scenarioName": "minimal_parallel_test",
+    "duration": "5s",
+    "topo": "tests/topology/minimal_delay_test.yaml",
+    "data": "tests/topology/minimal_delay_test.json",
+    "hosts": ["r1"],
+    "logPath": "test_logs",
+    "event": [
+        {
+            "beginTime": "0s",
+            "type": "dummy",
+            "duration": "5s"
+        }
+    ]
+}

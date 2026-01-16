@@ -162,29 +162,28 @@ func MoveControlLogs(dirName string) error {
 }
 
 func MoveTcpdumpLogs(dirName string, device string, index int) error {
-
-	err := os.Mkdir(model.Scenar.LogPath+"/"+model.Scenar.ScenarioName+"/"+dirName+"/"+device+"/tcpdump", 0777)
+	tcpdumpDir := filepath.Join(model.Scenar.LogPath, model.Scenar.ScenarioName, dirName, device, "tcpdump")
+	err := os.MkdirAll(tcpdumpDir, 0777)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create tcpdump log directory %s: %w", tcpdumpDir, err)
 	}
 
 	for _, inter := range model.Devices.Nodes[index].Interfaces {
-		tcpdumpFile, err := os.Open(model.FindTopoPath() + device + "/tcpdump/tcpdump_" + inter.Name + ".log")
+		srcPath := filepath.Join(model.FindTopoPath(), device, "tcpdump", "tcpdump_"+inter.Name+".log")
+		tcpdumpFile, err := os.Open(srcPath)
 		if err != nil {
-			fmt.Println("Error while opening tcpdump log file")
-			return err
+			return fmt.Errorf("failed to open tcpdump log file %s: %w", srcPath, err)
 		}
 		defer tcpdumpFile.Close()
 
-		dst, err := os.Create(model.Scenar.LogPath + "/" + model.Scenar.ScenarioName + "/" + dirName + "/" + device + "/tcpdump/tcpdump_" + inter.Name + ".log")
+		dstPath := filepath.Join(tcpdumpDir, "tcpdump_"+inter.Name+".log")
+		dst, err := os.Create(dstPath)
 		if err != nil {
-			fmt.Println("Error while creating new tcpdump log file")
-			return err
+			return fmt.Errorf("failed to create tcpdump log file %s: %w", dstPath, err)
 		}
 		_, err = io.Copy(dst, tcpdumpFile)
 		if err != nil {
-			fmt.Println("Error while copying tcpdump log into the new file")
-			return err
+			return fmt.Errorf("failed to copy tcpdump log from %s to %s: %w", srcPath, dstPath, err)
 		}
 
 	}
@@ -198,18 +197,14 @@ func MoveTcpdumpLogs(dirName string, device string, index int) error {
 }
 
 func GetTcpdumpLogs() error {
-
-	// containerNameArray := strings.Split(model.Scenar.Event[0].Host, "-")
-	// containerName := strings.Join(containerNameArray[:len(containerNameArray)-1], "-")
-
 	for _, node := range model.Scenar.Hosts {
 		containerName := model.ClabHostName(node)
-		cmd := exec.Command("sudo", "docker", "cp", containerName+":/tcpdump", model.FindTopoPath()+node+"/")
+		dstPath := filepath.Join(model.FindTopoPath(), node) + "/"
+		cmd := exec.Command("sudo", "docker", "cp", containerName+":/tcpdump", dstPath)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Println("Error while moving tcpdump directory")
-			log.Println(string(output))
-			return err
+			return fmt.Errorf("failed to copy tcpdump directory from container %s to %s: %w, output: %s",
+				containerName, dstPath, err, strings.TrimSpace(string(output)))
 		}
 	}
 
@@ -262,8 +257,8 @@ func TcpdumpLog(node string) error {
 		return err
 	}
 
-	// Create the tcpdump directory in the container
-	cmd := exec.Command("sudo", "docker", "exec", "-d", containerName, "mkdir", "tcpdump")
+	// Create the tcpdump directory in the container (use absolute path for consistency)
+	cmd := exec.Command("sudo", "docker", "exec", "-d", containerName, "mkdir", "/tcpdump")
 	var output []byte
 	output, err = cmd.CombinedOutput()
 	if err != nil {
@@ -284,7 +279,7 @@ func TcpdumpLog(node string) error {
 	// Add tcpdump commands for each interface
 	index := model.GetDeviceIndex(node)
 	for _, inter := range model.Devices.Nodes[index].Interfaces {
-		_, err = file.WriteString("tcpdump -i " + inter.Name + " -n -v > tcpdump/tcpdump" + "_" + inter.Name + ".log & \n")
+		_, err = file.WriteString("tcpdump -i " + inter.Name + " -n -v > /tcpdump/tcpdump" + "_" + inter.Name + ".log & \n")
 		if err != nil {
 			fmt.Println("Error while writing in tcpdump.sh file:", err)
 			return err
@@ -301,8 +296,8 @@ func TcpdumpLog(node string) error {
 	}
 	logrus.Debugf("execute %s\n", cmd.String())
 
-	// Run the tcpdump.sh script in the container
-	cmd = exec.Command("sudo", "docker", "exec", "-d", containerName, "./tcpdump.sh")
+	// Run the tcpdump.sh script in the container (use absolute path since working directory may vary)
+	cmd = exec.Command("sudo", "docker", "exec", "-d", containerName, "/tcpdump.sh")
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("Error while starting tcpdump:", err)

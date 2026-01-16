@@ -29,6 +29,14 @@ func ExecuteEvent(index int) error {
 		if err != nil {
 			return err
 		}
+	case model.EventTypeCopy:
+		err := ExecCopyCommand(index)
+		if err != nil {
+			return err
+		}
+	case model.EventTypeCollect:
+		// collect event requires EventExecutor with TrialLogDir set
+		return fmt.Errorf("collect event is only supported via EventExecutor (use repeat/batch commands)")
 	default:
 		return fmt.Errorf("invalid event type %s", model.Scenar.Event[index].Type)
 	}

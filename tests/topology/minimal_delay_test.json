@@ -1,0 +1,17 @@
+{
+    "name": "delay-test",
+    "nodes": [
+        {
+            "name": "r1",
+            "interfaces": [
+                {"name": "net0"}
+            ]
+        },
+        {
+            "name": "r2",
+            "interfaces": [
+                {"name": "net0"}
+            ]
+        }
+    ]
+}

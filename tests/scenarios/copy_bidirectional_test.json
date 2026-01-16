@@ -1,0 +1,35 @@
+{
+    "scenarioName": "copy_bidirectional_test",
+    "logPath": "./test_logs",
+    "topo": "./tests/topology/minimal_delay_test.yaml",
+    "data": "./tests/data/minimal_data.json",
+    "duration": "30s",
+    "hosts": ["r1", "r2"],
+    "event": [
+        {
+            "beginTime": "3s",
+            "type": "copy",
+            "host": "r1",
+            "toContainer": [
+                {"src": "./tests/data/test_input.txt", "dst": "/tmp/"}
+            ]
+        },
+        {
+            "beginTime": "5s",
+            "type": "shell",
+            "host": "r1",
+            "shellCommands": [
+                "cat /tmp/test_input.txt > /tmp/test_output.txt",
+                "echo 'processed by r1' >> /tmp/test_output.txt"
+            ]
+        },
+        {
+            "beginTime": "10s",
+            "type": "copy",
+            "host": "r1",
+            "fromContainer": [
+                {"src": "/tmp/test_output.txt", "dst": "./test_logs/"}
+            ]
+        }
+    ]
+}

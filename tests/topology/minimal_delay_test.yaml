@@ -1,0 +1,17 @@
+name: delay-test
+topology:
+  nodes:
+    r1:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      exec:
+        - ip addr add 192.168.1.1/24 dev net0
+        - ip link set net0 up
+    r2:
+      kind: linux
+      image: nicolaka/netshoot:latest
+      exec:
+        - ip addr add 192.168.1.2/24 dev net0
+        - ip link set net0 up
+  links:
+    - endpoints: ["r1:net0", "r2:net0"]

@@ -1,6 +1,9 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 type Connections struct {
 	SrcNode      string `json:"src_node"`
@@ -38,6 +41,47 @@ type Data struct {
 
 var Devices Data
 
+// labName is the custom lab name for containerlab.
+// If empty, Devices.Name (topology name) is used.
+// Access is protected by labNameMu for concurrent safety.
+var (
+	labName   string
+	labNameMu sync.RWMutex
+)
+
+// GetLabName returns the lab name to use for containerlab.
+// Returns custom labName if set, otherwise returns Devices.Name.
+// Falls back to Scenar.ScenarioName for noDeploy mode where Devices is not loaded.
+// Thread-safe for concurrent access.
+func GetLabName() string {
+	labNameMu.RLock()
+	defer labNameMu.RUnlock()
+	if labName != "" {
+		return labName
+	}
+	if Devices.Name != "" {
+		return Devices.Name
+	}
+	// Fallback for noDeploy mode
+	return Scenar.ScenarioName
+}
+
+// SetLabName sets a custom lab name for containerlab.
+// Thread-safe for concurrent access.
+func SetLabName(name string) {
+	labNameMu.Lock()
+	defer labNameMu.Unlock()
+	labName = name
+}
+
+// ResetLabName clears the custom lab name.
+// Thread-safe for concurrent access.
+func ResetLabName() {
+	labNameMu.Lock()
+	defer labNameMu.Unlock()
+	labName = ""
+}
+
 func ValidateHostNames(hosts []string) error {
 	for _, host := range hosts {
 		ok := false
@@ -54,7 +98,7 @@ func ValidateHostNames(hosts []string) error {
 }
 
 func ClabHostName(host string) string {
-	return "clab-" + Devices.Name + "-" + host
+	return "clab-" + GetLabName() + "-" + host
 }
 
 func GetDeviceIndex(device string) int {

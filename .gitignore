@@ -1,0 +1,20 @@
+# Build outputs
+netroub
+*.test
+
+# Log files
+*.log
+control.log
+
+# Symbolic links to private documentation
+doc
+CLAUDE.md
+
+# Claude Code
+.claude/
+
+# Development environment
+.devcontainer/
+
+# Analysis workspace
+analysis/
