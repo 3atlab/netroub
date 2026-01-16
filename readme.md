@@ -11,36 +11,54 @@ Netroub reproduces network failure behaviors described in a scenario file on Doc
 
 - Docker
 - [Pumba](https://github.com/alexei-led/pumba)
-- [containerlab](https://containerlab.dev/) or [tinet](https://github.com/tinynetwork/tinet)
+- [containerlab](https://containerlab.dev/)
 - [dot2net](https://github.com/cpflat/dot2net) (optional)
 
-## Usage
+## Installation
 
-### Build
+Download the binary from [GitHub Releases](https://github.com/3atlab/netroub/releases) (Linux amd64/arm64).
+
+Or build from source:
 
     go build .
 
-  (Optional) You can move the binary file generated in /usr/bin to execute netroub without entering its binary file path.
+## Usage
 
-    mv netroub /usr/bin/netroub
+### Run a single scenario
 
-### How to run a scenario
+    netroub run scenario.json
+    netroub run scenario.yaml
 
-    netroub /path/to/scenario/file.json
+### Repeat execution
 
-  It is also possible to execute scenario file written in yaml.
+    netroub repeat scenario.json -n 100 -p 4
 
-    netroub --yaml /path/to/scenario/file.json
+### Batch execution
+
+    netroub batch plan.yaml -p 4 --progress
+
+### Clean up containers
+
+    netroub clean scenario.json    # single scenario
+    netroub clean plan.yaml        # plan file
 
 ## Scenario file
 
 | Field        | Type   | Description
-|:-------------|:------ |----------------
-| scenarioName | string | Name of the scenario (useful for outputs)
-| logPath      | string | Path to the output repository
-| topo         | string | Path to the topology file required by Containerlab
+|:-------------|:-------|----------------
+| scenarioName | string | Name of the scenario
+| logPath      | string | Path to the output directory
+| topo         | string | Path to the topology file (containerlab)
 | data         | string | Path to the data file with device parameters
-| events       | array  | Array of event to be applied during scenario execution
+| events       | array  | Array of events to execute
+
+## Events
+
+- **delay**, **loss**, **corrupt**, **duplicate**: Network fault injection (via Pumba)
+- **rate**, **stress**: Bandwidth limiting and resource stress
+- **shell**: Execute commands in containers
+- **copy**: Copy files to/from containers
+- **collect**: Collect files from containers to log directory
 
 ## Citation
 
